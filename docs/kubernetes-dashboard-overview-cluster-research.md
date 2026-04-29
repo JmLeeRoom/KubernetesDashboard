@@ -1,7 +1,7 @@
 # KubernetesDashboard Overview / Cluster 코어 설계 근거 문서
 
-> 목적: `KubernetesDashboard`의 첫 코어를 `Overview`와 `Cluster` 중심으로 정의하고, 이후 기능을 확장할 때 흔들리지 않아야 할 설계 원칙을 공식 문서와 연구 문헌에 근거해 정리한다.  
-> 범위: 코드 구현이 아니라 구현 전 판단 기준, 데이터 경계, 화면 정보 구조, 확장 원칙, 검증 기준을 정의한다.  
+> 목적: `KubernetesDashboard`의 첫 코어를 `Overview`와 `Cluster` 중심으로 정의하고, 이후 기능을 확장할 때 흔들리지 않아야 할 설계 원칙을 공식 문서와 연구 문헌에 근거해 정리한다.
+> 범위: 코드 구현이 아니라 구현 전 판단 기준, 데이터 경계, 화면 정보 구조, 확장 원칙, 검증 기준을 정의한다.
 > 작성 원칙: 추측 금지, 출처 명시, 공식 문서와 연구 문헌의 주장 범위를 벗어난 과장 금지.
 
 ---
@@ -17,7 +17,7 @@ Phase 1의 코어는 다음 두 화면이다.
 | `Overview` | "클러스터가 지금 정상인가?" | 클러스터 전체 health, Node readiness, Pod 상태 분포, Deployment 상태 분포, 리소스 포화도, 최근 Event | Alerts, SLO, 멀티 클러스터 summary |
 | `Cluster` | "문제가 있다면 어느 workload / Pod인가?" | Namespace 필터, Deployment 카드, replica 상태, Deployment condition, 연결된 Pod의 `kubectl` 동일 STATUS | Pods, Nodes, Services, Ingresses, Logs, Actions |
 
-이 구조는 Kubernetes의 객체 모델과 SRE 모니터링 원칙 모두에 맞다. Kubernetes 공식 문서는 Pod가 일시적이고 컨트롤러가 replacement를 관리한다고 설명하며, Deployment는 Pod와 ReplicaSet의 desired state를 선언적으로 관리한다. 따라서 비전문가용 대시보드는 Pod 단독 목록보다 Deployment 중심으로 문제를 묶어 보여주는 것이 더 안정적이다.  
+이 구조는 Kubernetes의 객체 모델과 SRE 모니터링 원칙 모두에 맞다. Kubernetes 공식 문서는 Pod가 일시적이고 컨트롤러가 replacement를 관리한다고 설명하며, Deployment는 Pod와 ReplicaSet의 desired state를 선언적으로 관리한다. 따라서 비전문가용 대시보드는 Pod 단독 목록보다 Deployment 중심으로 문제를 묶어 보여주는 것이 더 안정적이다.
 근거: Kubernetes Pod lifecycle, Deployment 공식 문서.
 
 ### 1.2 반드시 지켜야 할 10개 원칙

@@ -187,6 +187,137 @@ export interface ClusterOverview {
 }
 
 // ---------------------------------------------------------------------------
+// Cluster page (Deployments drill-down)
+// ---------------------------------------------------------------------------
+
+/**
+ * Logical namespace identifier as it appears in `metadata.namespace`. The
+ * empty string is intentionally not a valid value: cluster-scoped workloads
+ * use a sentinel ("__cluster__") in the UI layer rather than overloading
+ * `""`, because Kubernetes itself uses both `""` and `"default"` to mean
+ * "default namespace" in different surfaces and we do not want that
+ * ambiguity to leak into our types.
+ */
+export type NamespaceName = string;
+
+export interface NamespaceOption {
+  readonly name: NamespaceName;
+  /** Optional human-readable label override. */
+  readonly displayName?: string;
+}
+
+/**
+ * Deployment health classification used by the Cluster card.
+ *
+ * Derivation order is fixed by research doc §7.3 and MUST be implemented in
+ * the BFF before reaching the UI:
+ *   1. ReplicaFailure=True            → "failed"
+ *   2. Progressing.reason == ProgressDeadlineExceeded → "failed"
+ *   3. Available=False && readyReplicas == 0 → "failed"
+ *   4. Available=False && partial ready → "degraded"
+ *   5. rollout in progress             → "progressing"
+ *   6. Available=True                  → "healthy"
+ *   7. fallback                        → "unknown"
+ *
+ * The UI does not collapse "failed" into "degraded": doing so would erase
+ * the distinction between a partially-available service (still serving
+ * some traffic) and a fully-down service.
+ */
+export type DeploymentHealth =
+  | "healthy"
+  | "progressing"
+  | "degraded"
+  | "failed"
+  | "unknown";
+
+export interface DeploymentReplicaState {
+  readonly desired: number;
+  readonly ready: number;
+  readonly available: number;
+  readonly updated: number;
+}
+
+/**
+ * Card-level summary for a Deployment. The `iconKey` is a stable hint the
+ * frontend can map to a Material Symbols ligature (e.g. "api", "security")
+ * so we don't ship full UI strings from the BFF.
+ */
+export interface DeploymentSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly namespace: NamespaceName;
+  readonly health: DeploymentHealth;
+  readonly replicas: DeploymentReplicaState;
+  /** Container image tag of the latest ReplicaSet (e.g. "v2.4.1"). */
+  readonly imageTag?: string;
+  /** Unix epoch ms when the Deployment object was created. */
+  readonly createdAtMs: number;
+  /** Optional category hint that maps to an icon glyph in the UI. */
+  readonly iconKey?: string;
+  /**
+   * Human-readable reason for the current health classification. Only
+   * present when `health !== "healthy"`. Required so the UI never has to
+   * synthesize copy from raw conditions.
+   */
+  readonly reason?: string;
+}
+
+/**
+ * Per-Pod row used inside the Deployment card's Associated Pods list.
+ * `displayStatus` is the kubectl-compatible computed string (research doc
+ * §3.2), NOT `pod.status.phase`.
+ */
+export interface PodRow {
+  readonly id: string;
+  readonly name: string;
+  readonly namespace: NamespaceName;
+  readonly displayStatus: string;
+  /** True if all containers are Ready (i.e. ready/total ratio == 1). */
+  readonly isReady: boolean;
+  readonly readyContainers: number;
+  readonly totalContainers: number;
+  readonly restartCount: number;
+  readonly createdAtMs: number;
+  /** Severity used by the UI to color the row (driven by displayStatus). */
+  readonly severity: PodSeverity;
+}
+
+/**
+ * Pod-row severity tier.
+ *
+ * Decoupled from `EventSeverity` because Pod severity is computed from
+ * STATUS + Ready condition, while Event severity comes from the Event
+ * object itself; they share no conversion contract.
+ */
+export type PodSeverity = "ok" | "info" | "warning" | "error";
+
+export interface DeploymentWithPods {
+  readonly deployment: DeploymentSummary;
+  readonly pods: ReadonlyArray<PodRow>;
+}
+
+/**
+ * Page-level payload for the Cluster screen. The page receives one of these
+ * (or undefined while loading) per namespace selection.
+ */
+export interface ClusterPagePayload {
+  readonly cluster: ClusterIdentity;
+  readonly namespace: NamespaceName;
+  readonly availableNamespaces: ReadonlyArray<NamespaceOption>;
+  readonly deployments: ReadonlyArray<DeploymentWithPods>;
+  readonly metadata: {
+    readonly computedAtMs: number;
+    readonly resourceVersion?: string;
+    readonly stale: boolean;
+    /**
+     * Server-side pagination cursor. When non-null, the next page can be
+     * fetched with `?continue=<token>` (research doc §3.4 chunked list).
+     */
+    readonly continueToken?: string | null;
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Async UI envelope
 // ---------------------------------------------------------------------------
 
